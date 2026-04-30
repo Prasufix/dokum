@@ -197,6 +197,141 @@ Located in `src/actions/admin.ts` and `src/actions/auth.ts`:
 | `/admin/tasks/new` | Create Task |
 | `/admin/documents/new` | Create Document |
 
+## User Flows
+
+### 1. New User Registration
+
+```
+Landing Page (/)
+    ↓
+    [Not authenticated → redirected to /auth/login]
+    ↓
+Login Page (/auth/login)
+    ↓
+    [Click "Register instead"]
+    ↓
+Register Page (/auth/register)
+    ↓
+    [Submit registration form]
+    ↓
+Supabase Auth → Email confirmation
+    ↓
+    [Sign in with credentials]
+    ↓
+Home Page (/) — List of published Kurse
+```
+
+### 2. Browsing Course Content (Authenticated User)
+
+```
+Home Page (/)
+    ↓
+    [Grid of published Kurse cards]
+    ↓
+    [Click on a Kurs card]
+    ↓
+Kurs Detail (/kurse/[kursId])
+    ↓
+    [Expandable tree of Units → Tasks → Documents]
+    ↓
+    [Click on a Document (PDF/Image)]
+    ↓
+    [PDF/Image opens in new tab via /api/file/[docId]]
+    ↓
+Authenticated proxy route generates signed URL + streams file
+    ↓
+    [Back arrow in browser returns to Kurs detail]
+    ↓
+    [Explore other Units/Tasks/Documents or go home]
+```
+
+### 3. Admin Content Creation
+
+```
+Home Page (/)
+    ↓
+    [Admin-only navbar link or direct navigation to /admin]
+    ↓
+Admin Dashboard (/admin)
+    ↓
+    [4-card grid: Create Kurs, Create Unit, Create Task, Create Document]
+    ↓
+    [Click "Create Kurs"]
+    ↓
+Create Kurs (/admin/kurse/new)
+    ↓
+    [Fill form: title, description]
+    ↓
+    [Submit → Server Action creates record]
+    ↓
+    [Success box shows: "← Zurück" + "Unit hinzufügen →"]
+    ↓
+    [Click "Unit hinzufügen →" to jump to Create Unit with kursId pre-selected]
+    ↓
+Create Unit (/admin/units/new?kursId=...)
+    ↓
+    [Form pre-selected; tree shows selected Kurs highlighted]
+    ↓
+    [Fill title, description]
+    ↓
+    [Submit → Server Action creates record]
+    ↓
+    [Success box shows: "← Zurück" + "Task hinzufügen →"]
+    ↓
+    [Continue chain or go back to create more Units in same Kurs]
+    ↓
+    ... (repeat for Tasks and Documents)
+    ↓
+    [Publish Kurs in Supabase dashboard → Children auto-visible via RLS]
+    ↓
+    [Home page now displays the new Kurs to authenticated users]
+```
+
+### 4. Viewing Published Content (After Admin Setup)
+
+```
+New authenticated user signs in
+    ↓
+Home Page (/) shows all published Kurse
+    ↓
+[User clicks Kurs]
+    ↓
+Kurs Detail shows full tree:
+    Unit 1
+      ├── Task 1.1
+      │   ├── Document (PDF)
+      │   └── Document (Image Collection)
+      └── Task 1.2
+          └── Document (PDF)
+    Unit 2
+      └── Task 2.1
+          └── Document (PDF)
+    ↓
+[User clicks any Document]
+    ↓
+PDF/Image opens (via authenticated proxy)
+    ↓
+[User can navigate hierarchy, view multiple documents, or return home]
+```
+
+### 5. Logging Out
+
+```
+Navbar (all pages)
+    ↓
+    [Authenticated user sees their profile name]
+    ↓
+    [Click profile dropdown]
+    ↓
+    [Click "Sign Out"]
+    ↓
+    [Server Action calls signOut()]
+    ↓
+    [Redirected to /auth/login]
+    ↓
+    [All protected routes now return 403 or redirect to login]
+```
+
 ## Dependencies
 
 ### Key Libraries
