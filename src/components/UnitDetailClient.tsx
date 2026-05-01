@@ -92,14 +92,14 @@ export default function UnitDetailClient({ tasks }: { tasks: TaskWithDocs[] }) {
                                 <p className="text-xs text-gray-500">{doc.description}</p>
                               )}
                               <div className="mt-2 grid grid-cols-1 gap-2">
-                                {doc.document_images.map((img, imgIndex) => (
+                                {(doc.document_images ?? []).map((img, imgIndex) => (
                                   <img
                                     key={img.id}
                                     src={`/api/image/${img.id}`}
                                     alt={doc.title}
                                     className="rounded-md object-contain w-full max-h-[400px] cursor-zoom-in"
                                     onClick={() => openLightbox(
-                                      doc.document_images.map((i) => `/api/image/${i.id}`),
+                                      (doc.document_images ?? []).map((i) => `/api/image/${i.id}`),
                                       imgIndex
                                     )}
                                   />

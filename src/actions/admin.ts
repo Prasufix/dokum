@@ -142,8 +142,17 @@ export async function createDocument(formData: FormData): Promise<ActionResult> 
 
       if (uploadError) {
         // Rollback: delete document + already-uploaded images
-        await supabase.from('documents').delete().eq('id', docData.id)
-        if (uploadedPaths.length) await supabase.storage.from(STORAGE_BUCKET).remove(uploadedPaths)
+        const [dbRollback, storageRollback] = await Promise.allSettled([
+          supabase.from('documents').delete().eq('id', docData.id),
+          uploadedPaths.length
+            ? supabase.storage.from(STORAGE_BUCKET).remove(uploadedPaths)
+            : Promise.resolve(null),
+        ])
+        // Log rollback failures for observability — do not throw
+        const dbErr = dbRollback.status === 'rejected' ? dbRollback.reason : (dbRollback.value as any)?.error
+        const stErr = storageRollback.status === 'rejected' ? storageRollback.reason : null
+        if (dbErr) console.error('[createDocument rollback] DB delete failed:', dbErr)
+        if (stErr) console.error('[createDocument rollback] Storage remove failed:', stErr)
         return { error: `Upload fehlgeschlagen: ${uploadError.message}` }
       }
       uploadedPaths.push(storagePath)
@@ -157,8 +166,17 @@ export async function createDocument(formData: FormData): Promise<ActionResult> 
     }))
     const { error: imgInsertError } = await supabase.from('document_images').insert(imgRows)
     if (imgInsertError) {
-      await supabase.from('documents').delete().eq('id', docData.id)
-      await supabase.storage.from(STORAGE_BUCKET).remove(uploadedPaths)
+      const [dbRollback, storageRollback] = await Promise.allSettled([
+        supabase.from('documents').delete().eq('id', docData.id),
+        uploadedPaths.length
+          ? supabase.storage.from(STORAGE_BUCKET).remove(uploadedPaths)
+          : Promise.resolve(null),
+      ])
+      // Log rollback failures for observability — do not throw
+      const dbErr = dbRollback.status === 'rejected' ? dbRollback.reason : (dbRollback.value as any)?.error
+      const stErr = storageRollback.status === 'rejected' ? storageRollback.reason : null
+      if (dbErr) console.error('[createDocument rollback] DB delete failed:', dbErr)
+      if (stErr) console.error('[createDocument rollback] Storage remove failed:', stErr)
       return { error: `Failed to save images: ${imgInsertError.message}` }
     }
 
@@ -388,7 +406,12 @@ export async function updateDocument(docId: string, formData: FormData): Promise
 
     const { error: dbErr } = await supabase.from('documents').update({ title, description, position, file_path: newPath, file_type }).eq('id', docId)
     if (dbErr) {
-      await supabase.storage.from(STORAGE_BUCKET).remove([newPath])
+      const [storageRollback] = await Promise.allSettled([
+        supabase.storage.from(STORAGE_BUCKET).remove([newPath]),
+      ])
+      // Log rollback failures for observability — do not throw
+      const stErr = storageRollback.status === 'rejected' ? storageRollback.reason : null
+      if (stErr) console.error('[updateDocument rollback] Storage remove failed:', stErr)
       return { error: dbErr.message }
     }
 
