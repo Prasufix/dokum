@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { getTaskById, getAllKurseDeep } from '@/lib/dal'
 import { NewTaskPageClient } from '@/components/admin/NewTaskPageClient'
 import { AdminSubpageNav } from '@/components/admin/AdminSubpageNav'
 
@@ -23,22 +24,14 @@ export default async function NewTaskPage({
   let defaultUnitId = unitId ?? ''
   let editDefaults: { title: string; description: string | null; position: number } | undefined
   if (editId) {
-    const { data } = await supabase
-      .from('tasks')
-      .select('unit_id, title, description, position')
-      .eq('id', editId)
-      .single()
+    const data = await getTaskById(editId)
     if (data) {
       editDefaults = { title: data.title, description: data.description, position: data.position }
       defaultUnitId = data.unit_id
     }
   }
 
-  const { data: kurse } = await supabase
-    .from('kurse')
-    .select('id, title, units(id, title, position, created_at, tasks(id, title, position, created_at))')
-    .order('position', { ascending: true })
-    .order('created_at', { ascending: true })
+  const kurse = await getAllKurseDeep()
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-10">
@@ -53,10 +46,9 @@ export default async function NewTaskPage({
           </Link>
         )}
       </div>
-      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
       <NewTaskPageClient
         key={editId ?? 'new'}
-        kurseWithUnitsAndTasks={(kurse as any) ?? []}
+        kurseWithUnitsAndTasks={kurse}
         defaultUnitId={defaultUnitId}
         editId={editId}
         defaultValues={editDefaults}

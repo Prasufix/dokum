@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { getImageFilePath } from '@/lib/dal'
 import { STORAGE_BUCKET, SIGNED_URL_EXPIRY_SECONDS } from '@/lib/constants'
 
 export async function GET(
@@ -16,13 +17,9 @@ export async function GET(
   }
 
   // Fetch the document_images row — RLS ensures only images under published Kurse are accessible
-  const { data: img, error } = await supabase
-    .from('document_images')
-    .select('file_path')
-    .eq('id', imageId)
-    .single()
+  const img = await getImageFilePath(imageId)
 
-  if (error || !img) {
+  if (!img) {
     return new NextResponse('Bild nicht gefunden.', { status: 404 })
   }
 

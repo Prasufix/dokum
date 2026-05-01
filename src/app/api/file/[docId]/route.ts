@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { getDocumentFilePath } from '@/lib/dal'
 import { STORAGE_BUCKET, SIGNED_URL_EXPIRY_SECONDS } from '@/lib/constants'
 
 export async function GET(
@@ -16,13 +17,9 @@ export async function GET(
   }
 
   // Fetch document — RLS ensures only documents under published Kurse are accessible
-  const { data: doc, error } = await supabase
-    .from('documents')
-    .select('file_path')
-    .eq('id', docId)
-    .single()
+  const doc = await getDocumentFilePath(docId)
 
-  if (error || !doc) {
+  if (!doc || !doc.file_path) {
     return new NextResponse('Dokument nicht gefunden.', { status: 404 })
   }
 

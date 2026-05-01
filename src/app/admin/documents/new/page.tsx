@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { getDocumentById, getAllKurseDeep } from '@/lib/dal'
 import { NewDocumentPageClient } from '@/components/admin/NewDocumentPageClient'
 import { AdminSubpageNav } from '@/components/admin/AdminSubpageNav'
 
@@ -23,22 +24,14 @@ export default async function NewDocumentPage({
   let defaultTaskId = taskId ?? ''
   let editDefaults: { title: string; description: string | null; position: number; file_path: string | null; file_type: 'pdf' | 'image' | 'image_collection' } | undefined
   if (editId) {
-    const { data } = await supabase
-      .from('documents')
-      .select('task_id, title, description, position, file_path, file_type')
-      .eq('id', editId)
-      .single()
+    const data = await getDocumentById(editId)
     if (data) {
-      editDefaults = { title: data.title, description: data.description, position: data.position, file_path: data.file_path, file_type: data.file_type as 'pdf' | 'image' | 'image_collection' }
+      editDefaults = { title: data.title, description: data.description, position: data.position, file_path: data.file_path, file_type: data.file_type }
       defaultTaskId = data.task_id
     }
   }
 
-  const { data: kurse } = await supabase
-    .from('kurse')
-    .select('id, title, units(id, title, position, created_at, tasks(id, title, position, created_at, documents(id, title, position, created_at, file_type, document_images(id))))')
-    .order('position', { ascending: true })
-    .order('created_at', { ascending: true })
+  const kurse = await getAllKurseDeep()
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-10">
@@ -53,10 +46,9 @@ export default async function NewDocumentPage({
           </Link>
         )}
       </div>
-      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
       <NewDocumentPageClient
         key={editId ?? 'new'}
-        kurseTree={(kurse as any) ?? []}
+        kurseTree={kurse}
         defaultTaskId={defaultTaskId}
         editId={editId}
         defaultValues={editDefaults}

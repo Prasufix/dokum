@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { getUnitById, getAllKurseWithUnits } from '@/lib/dal'
 import { NewUnitPageClient } from '@/components/admin/NewUnitPageClient'
 import { AdminSubpageNav } from '@/components/admin/AdminSubpageNav'
 
@@ -23,22 +24,14 @@ export default async function NewUnitPage({
   let defaultKursId = kursId ?? ''
   let editDefaults: { title: string; description: string | null; position: number } | undefined
   if (editId) {
-    const { data } = await supabase
-      .from('units')
-      .select('kurs_id, title, description, position')
-      .eq('id', editId)
-      .single()
+    const data = await getUnitById(editId)
     if (data) {
       editDefaults = { title: data.title, description: data.description, position: data.position }
       defaultKursId = data.kurs_id
     }
   }
 
-  const { data: kurse } = await supabase
-    .from('kurse')
-    .select('id, title, units(id, title, position, created_at)')
-    .order('position', { ascending: true })
-    .order('created_at', { ascending: true })
+  const kurse = await getAllKurseWithUnits()
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-10">
@@ -53,10 +46,9 @@ export default async function NewUnitPage({
           </Link>
         )}
       </div>
-      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
       <NewUnitPageClient
         key={editId ?? 'new'}
-        kurseWithUnits={(kurse as any) ?? []}
+        kurseWithUnits={kurse}
         defaultKursId={defaultKursId}
         editId={editId}
         defaultValues={editDefaults}
